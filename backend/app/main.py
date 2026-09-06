@@ -9,11 +9,11 @@ from .agents import specialist_directory, SPECIALISTS
 from .agent_intelligence import enhanced_prompt
 from .engineering import build_project, validate_project, synthesize_consensus
 from .evaluation import evaluate_project
-from .provider import generate_with_provider, ProviderError
+from .provider_v2 import generate_with_provider, ProviderError
 from .premium import plan_catalog, entitlements
 
 settings = get_settings()
-app = FastAPI(title="RoboLab-X Engineering API", version="2.1.0", docs_url="/docs")
+app = FastAPI(title="RoboLab-X Engineering API", version="2.1.1", docs_url="/docs")
 origins = [x.strip() for x in settings.cors_origins.split(",") if x.strip()]
 app.add_middleware(CORSMiddleware, allow_origins=origins or ["*"], allow_credentials=False, allow_methods=["GET", "POST", "OPTIONS"], allow_headers=["*"])
 _hits: dict[str, deque[float]] = defaultdict(deque)
@@ -43,7 +43,7 @@ class GenerateRequest(BaseModel):
     use_ai: bool = True
 
 @app.get("/healthz")
-def healthz(): return {"status": "ok", "service": "robolab-x", "version": "2.1.0"}
+def healthz(): return {"status": "ok", "service": "robolab-x", "version": "2.1.1"}
 
 @app.get("/readyz")
 def readyz():
@@ -51,7 +51,7 @@ def readyz():
     return {"status": "ready" if configured else "degraded", "provider_configured": configured, "provider": settings.ai_provider}
 
 @app.get("/api/v1/info")
-def info(): return {"name": "RoboLab-X", "version": "2.1.0", "specialists": 48, "pro_features": 10, "engine": "specialist-routing + verification + consensus"}
+def info(): return {"name": "RoboLab-X", "version": "2.1.1", "specialists": 48, "pro_features": 10, "engine": "specialist-routing + advanced reasoning + verification + consensus"}
 
 @app.get("/api/v1/agents")
 def agents(): return {"count": 48, "agents": specialist_directory()}
@@ -70,7 +70,7 @@ async def generate(request: GenerateRequest):
         lead = next(a for a in SPECIALISTS if a.domain == "lead")
         try:
             ai_result = await generate_with_provider(
-                enhanced_prompt(lead, request.idea, "Use the project plan, specialist work orders and verification results as shared context."),
+                enhanced_prompt(lead, request.idea, "Use the project plan and verification requirements as shared context."),
                 "Create a rigorous final engineering synthesis. Return JSON with decision, architecture, artifacts, risks, verification_checks, conflicts, unresolved_questions and recommended_next_steps.",
                 role=lead.domain,
             )
