@@ -11,6 +11,12 @@ services:
         value: "*"
       - key: RATE_LIMIT_PER_MINUTE
         value: "60"
+      - key: PRO_BETA_ENABLED
+        value: "true"
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: GOOGLE_CLIENT_ID
+        sync: false
       - key: AI_PROVIDER
         value: local
       - key: AI_BASE_URL
@@ -18,4 +24,18 @@ services:
       - key: AI_MODEL
         sync: false
       - key: AI_API_KEY
+        sync: false
+      - key: ARCHITECT_MODEL
+        sync: false
+      - key: CIRCUIT_MODEL
+        sync: false
+      - key: CODE_MODEL
+        sync: false
+      - key: CAD_MODEL
+        sync: false
+      - key: VERIFIER_MODEL
+        sync: false
+      - key: COMPILER_MODEL
+        sync: false
+      - key: AUDITOR_MODEL
         sync: false
