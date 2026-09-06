@@ -17,9 +17,9 @@ class UserSession {
     this.isPro = false,
   });
 
-  UserSession copyWith({bool? isPro}) => UserSession(
+  UserSession copyWith({String? token, bool? isPro}) => UserSession(
     mode: mode,
-    token: token,
+    token: token ?? this.token,
     displayName: displayName,
     email: email,
     isPro: isPro ?? this.isPro,
@@ -86,8 +86,19 @@ class SessionService {
     return session;
   }
 
-  static Future<UserSession> setPro(UserSession current, bool value) async {
-    final updated = current.copyWith(isPro: value);
+  static Future<UserSession> applyServerSession(Map<String, dynamic> data, UserSession current) async {
+    final user = (data['user'] as Map?)?.cast<String, dynamic>() ?? const <String, dynamic>{};
+    final token = data['token']?.toString();
+    if (token == null || token.isEmpty) {
+      throw StateError('Backend did not return a replacement session token.');
+    }
+    final updated = UserSession(
+      mode: user['mode']?.toString() ?? current.mode,
+      token: token,
+      displayName: user['name']?.toString() ?? current.displayName,
+      email: user['email']?.toString() ?? current.email,
+      isPro: user['pro'] == true,
+    );
     await _persist(updated);
     return updated;
   }
