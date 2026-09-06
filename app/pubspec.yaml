@@ -1,7 +1,7 @@
 name: robolab_x
-description: RoboLab-X professional robotics engineering workspace.
+description: RoboLab-X professional AI-assisted robotics engineering workspace for Android.
 publish_to: 'none'
-version: 1.0.0+1
+version: 2.0.0+20
 
 environment:
   sdk: '>=3.9.0 <4.0.0'
@@ -11,6 +11,9 @@ dependencies:
     sdk: flutter
   http: ^1.5.0
   cupertino_icons: ^1.0.8
+  google_sign_in: ^7.2.0
+  shared_preferences: ^2.5.3
+  in_app_purchase: ^3.2.3
 
 dev_dependencies:
   flutter_test:
