@@ -9,9 +9,10 @@ from .agents import specialist_directory, SPECIALISTS, specialist_prompt
 from .engineering import build_project, validate_project, synthesize_consensus
 from .evaluation import evaluate_project
 from .provider import generate_with_provider, ProviderError
+from .premium import plan_catalog, entitlements
 
 settings = get_settings()
-app = FastAPI(title="RoboLab-X Engineering API", version="2.0.0", docs_url="/docs")
+app = FastAPI(title="RoboLab-X Engineering API", version="2.1.0", docs_url="/docs")
 origins = [x.strip() for x in settings.cors_origins.split(",") if x.strip()]
 app.add_middleware(CORSMiddleware, allow_origins=origins or ["*"], allow_credentials=False, allow_methods=["GET", "POST", "OPTIONS"], allow_headers=["*"])
 _hits: dict[str, deque[float]] = defaultdict(deque)
@@ -41,7 +42,7 @@ class GenerateRequest(BaseModel):
     use_ai: bool = True
 
 @app.get("/healthz")
-def healthz(): return {"status": "ok", "service": "robolab-x", "version": "2.0.0"}
+def healthz(): return {"status": "ok", "service": "robolab-x", "version": "2.1.0"}
 
 @app.get("/readyz")
 def readyz():
@@ -49,10 +50,16 @@ def readyz():
     return {"status": "ready" if configured else "degraded", "provider_configured": configured, "provider": settings.ai_provider}
 
 @app.get("/api/v1/info")
-def info(): return {"name": "RoboLab-X", "version": "2.0.0", "specialists": 48, "pro_features": 8, "engine": "specialist-routing + verification + consensus"}
+def info(): return {"name": "RoboLab-X", "version": "2.1.0", "specialists": 48, "pro_features": 10, "engine": "specialist-routing + verification + consensus"}
 
 @app.get("/api/v1/agents")
 def agents(): return {"count": 48, "agents": specialist_directory()}
+
+@app.get("/api/v1/plans")
+def plans(): return {"plans": plan_catalog(), "default": "free", "beta_pro_enabled": settings.pro_beta_enabled}
+
+@app.get("/api/v1/entitlements/{plan_id}")
+def get_entitlements(plan_id: str): return entitlements(plan_id)
 
 @app.post("/api/v1/projects/generate")
 async def generate(request: GenerateRequest):
@@ -65,8 +72,8 @@ async def generate(request: GenerateRequest):
         except ProviderError as exc:
             ai_result = {"mode": "fallback", "error": str(exc), "note": "Deterministic engineering pipeline retained."}
     findings = validate_project(project)
-    consensus = synthesize_consensus(project, findings)
     quality = evaluate_project(project)
+    consensus = synthesize_consensus(project, findings)
     project["ai_synthesis"] = ai_result
     project["verification"] = findings
     project["quality_evaluation"] = quality
@@ -75,4 +82,4 @@ async def generate(request: GenerateRequest):
 
 @app.get("/api/v1/pro/features")
 def pro_features():
-    return {"plan": "RoboLab Pro", "monthly": 99, "annual": 799, "features": ["advanced_generation", "consensus", "power_analysis", "firmware_review", "cad_spec", "simulation_plan", "project_export", "priority_generation"]}
+    return {"plan": "RoboLab Pro", "monthly": 99, "annual": 799, "currency": "INR", "features": plan_catalog()[1]["features"]}
