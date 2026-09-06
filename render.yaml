@@ -17,6 +17,10 @@ services:
         generateValue: true
       - key: GOOGLE_CLIENT_ID
         sync: false
+      - key: ANDROID_PACKAGE_NAME
+        value: com.synapsex.robotics.robolab_x
+      - key: GOOGLE_PLAY_SERVICE_ACCOUNT_JSON
+        sync: false
       - key: AI_PROVIDER
         value: local
       - key: AI_BASE_URL
