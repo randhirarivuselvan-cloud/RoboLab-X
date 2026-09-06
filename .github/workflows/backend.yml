@@ -1,0 +1,21 @@
+name: RoboLab X Backend CI
+
+on:
+  push:
+    branches: [main, production-foundation]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --upgrade pip
+      - run: pip install -r requirements.txt
+      - run: python -m compileall app main.py
+      - run: python -c "from app.agents import SPECIALISTS; assert len(SPECIALISTS) == 48"
+      - run: python -c "from main import app; assert any(getattr(r, 'path', '') == '/healthz' for r in app.routes)"
