@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+
 @dataclass(frozen=True)
 class Specialist:
     id: str
@@ -10,10 +11,12 @@ class Specialist:
     outputs: tuple[str, ...]
     risk_level: str = "medium"
 
+
 DOMAINS = [
     ("systems", "Systems Architect", "requirements, interfaces, architecture", "Turn an ambiguous idea into a coherent, testable system architecture.", ("requirements", "architecture", "interfaces", "acceptance_tests"), "high"),
     ("electronics", "Electronics Engineer", "analog and digital electronics", "Design electrically consistent signal and power interfaces.", ("schematic", "signal_paths", "component_constraints", "test_points"), "high"),
     ("power", "Power Systems Engineer", "power budgets, rails, current paths", "Size rails, protection and energy paths with explicit margins.", ("power_budget", "rails", "protection", "margin_checks"), "critical"),
+    ("thermal", "Thermal Engineer", "heat generation, dissipation and temperature limits", "Keep electronics, batteries, motors and enclosures within validated thermal limits.", ("heat_sources", "thermal_budget", "cooling_strategy", "temperature_tests"), "critical"),
     ("embedded", "Embedded Engineer", "MCU firmware and peripherals", "Map hardware capabilities to deterministic firmware architecture.", ("pin_map", "drivers", "state_machine", "timing"), "high"),
     ("firmware", "Firmware Reviewer", "firmware correctness and reliability", "Independently challenge generated firmware for faults and edge cases.", ("review", "faults", "repair_plan", "regression_tests"), "critical"),
     ("robotics", "Robotics Engineer", "robot mechanisms and control", "Translate the goal into a practical robot architecture.", ("robot_architecture", "subsystems", "motion_plan", "integration"), "high"),
@@ -60,13 +63,31 @@ DOMAINS = [
     ("lead", "Lead Robotics Engineer", "final engineering synthesis", "Resolve specialist conflicts and produce the final coherent engineering decision.", ("decision", "tradeoffs", "open_questions", "approval_gate"), "critical"),
 ]
 
-SPECIALISTS = tuple(Specialist(f"agent-{i+1:02d}", name, domain, responsibility, mission, tuple(outputs), risk) for i, (domain, name, responsibility, mission, outputs, risk) in enumerate(DOMAINS))
+
+SPECIALISTS = tuple(
+    Specialist(f"agent-{i + 1:02d}", name, domain, responsibility, mission, tuple(outputs), risk)
+    for i, (domain, name, responsibility, mission, outputs, risk) in enumerate(DOMAINS)
+)
 assert len(SPECIALISTS) == 48
 
-SYSTEM_PROMPT = """You are a specialist inside RoboLab-X, a professional robotics engineering system. Be precise, skeptical and explicit about assumptions. Never invent measured values, pinouts, part availability or safety guarantees. Separate known facts, estimates and user-supplied constraints. Return actionable engineering work, validation checks, failure modes and unresolved questions. Prefer deterministic, testable designs over vague advice."""
+SYSTEM_PROMPT = (
+    "You are a specialist inside RoboLab-X, a professional robotics engineering system. "
+    "Be precise, skeptical and explicit about assumptions. Never invent measured values, pinouts, "
+    "part availability or safety guarantees. Separate known facts, estimates and user-supplied constraints. "
+    "Return actionable engineering work, validation checks, failure modes and unresolved questions. "
+    "Prefer deterministic, testable designs over vague advice."
+)
+
 
 def specialist_prompt(agent: Specialist, idea: str, context: str = "") -> str:
-    return f"{SYSTEM_PROMPT}\n\nROLE: {agent.name}\nDOMAIN: {agent.domain}\nRESPONSIBILITY: {agent.responsibility}\nMISSION: {agent.mission}\nREQUIRED OUTPUTS: {', '.join(agent.outputs)}\nRISK LEVEL: {agent.risk_level}\n\nPROJECT:\n{idea}\n\nSHARED CONTEXT:\n{context}\n\nAct independently. Challenge assumptions, identify conflicts with other domains, and make every recommendation verifiable."
+    return (
+        f"{SYSTEM_PROMPT}\n\nROLE: {agent.name}\nDOMAIN: {agent.domain}\n"
+        f"RESPONSIBILITY: {agent.responsibility}\nMISSION: {agent.mission}\n"
+        f"REQUIRED OUTPUTS: {', '.join(agent.outputs)}\nRISK LEVEL: {agent.risk_level}\n\n"
+        f"PROJECT:\n{idea}\n\nSHARED CONTEXT:\n{context}\n\n"
+        "Act independently. Challenge assumptions, identify conflicts with other domains, and make every recommendation verifiable."
+    )
+
 
 def specialist_directory() -> list[dict]:
-    return [{**a.__dict__, "outputs": list(a.outputs)} for a in SPECIALISTS]
+    return [{**agent.__dict__, "outputs": list(agent.outputs)} for agent in SPECIALISTS]
