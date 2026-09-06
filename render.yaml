@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: robolab-x-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: RATE_LIMIT_PER_MINUTE
+        value: "60"
+      - key: AI_PROVIDER
+        value: local
+      - key: AI_BASE_URL
+        sync: false
+      - key: AI_MODEL
+        sync: false
+      - key: AI_API_KEY
+        sync: false
