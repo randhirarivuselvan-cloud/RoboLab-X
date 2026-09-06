@@ -1,20 +1,21 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-from .app.config import settings
-from .app.agents import list_specialists
-from .app.ai import generate, AIError
+from app.config import settings
+from app.agents import list_specialists
+from app.ai import generate, AIError
 
 limiter = Limiter(key_func=get_remote_address, default_limits=[settings.rate_limit])
 app = FastAPI(title=settings.app_name, version="1.0.0", docs_url="/docs", redoc_url="/redoc")
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, lambda request, exc: __import__('fastapi').responses.JSONResponse(status_code=429, content={"detail":"Rate limit exceeded"}))
+app.add_exception_handler(RateLimitExceeded, lambda request, exc: JSONResponse(status_code=429, content={"detail":"Rate limit exceeded"}))
 app.add_middleware(SlowAPIMiddleware)
 origins = [x.strip() for x in settings.allowed_origins.split(",") if x.strip()]
-app.add_middleware(CORSMiddleware, allow_origins=origins if origins != ["*"] else ["*"], allow_credentials=origins != ["*"], allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(CORSMiddleware, allow_origins=origins or ["*"], allow_credentials=origins != ["*"], allow_methods=["*"], allow_headers=["*"])
 
 @app.get("/healthz")
 async def healthz():
@@ -38,12 +39,12 @@ async def generate_project(request: Request):
     body = await request.json()
     prompt = str(body.get("prompt", "")).strip()
     if not prompt:
-        return __import__('fastapi').responses.JSONResponse(status_code=422, content={"detail":"prompt is required"})
+        raise HTTPException(status_code=422, detail="prompt is required")
     try:
         result = await generate(prompt, body.get("context"))
         return {"ok":True,"result":result,"mode":"provider" if settings.ai_api_key else "offline","agents_consulted":48}
     except AIError as exc:
-        return __import__('fastapi').responses.JSONResponse(status_code=503, content={"ok":False,"detail":str(exc)})
+        return JSONResponse(status_code=503, content={"ok":False,"detail":str(exc)})
 
 @app.get("/api/plans")
 async def plans():
