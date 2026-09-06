@@ -11,10 +11,11 @@ from .engineering import build_project, validate_project, synthesize_consensus
 from .evaluation import evaluate_project
 from .provider_v2 import generate_with_provider, ProviderError
 from .premium import plan_catalog, entitlements
-from .auth import create_guest, verify_google_id_token, verify_session
+from .auth import create_guest, verify_google_id_token, verify_session, issue_session
+from .billing import verify_subscription
 
 settings = get_settings()
-app = FastAPI(title="RoboLab-X Engineering API", version="3.0.0", docs_url="/docs")
+app = FastAPI(title="RoboLab-X Engineering API", version="3.1.0", docs_url="/docs")
 origins = [x.strip() for x in settings.cors_origins.split(",") if x.strip()]
 app.add_middleware(CORSMiddleware, allow_origins=origins or ["*"], allow_credentials=False, allow_methods=["GET", "POST", "OPTIONS"], allow_headers=["*"])
 _hits: dict[str, deque[float]] = defaultdict(deque)
@@ -42,6 +43,10 @@ async def rate_limit(request: Request, call_next):
 class GoogleAuthRequest(BaseModel):
     id_token: str = Field(min_length=20, max_length=10000)
 
+class BillingVerifyRequest(BaseModel):
+    product_id: str = Field(min_length=3, max_length=200)
+    purchase_token: str = Field(min_length=10, max_length=20000)
+
 class GenerateRequest(BaseModel):
     idea: str = Field(min_length=3, max_length=12000)
     pro: bool = False
@@ -62,7 +67,7 @@ def _session_from_request(request: Request, required: bool = False) -> dict | No
 
 @app.get("/healthz")
 def healthz():
-    return {"status": "ok", "service": "robolab-x", "version": "3.0.0"}
+    return {"status": "ok", "service": "robolab-x", "version": "3.1.0"}
 
 @app.get("/readyz")
 def readyz():
@@ -71,7 +76,7 @@ def readyz():
 
 @app.get("/api/v1/info")
 def info():
-    return {"name": "RoboLab-X", "version": "3.0.0", "specialists": 48, "pro_features": 10, "android": True, "auth": ["google", "guest"], "engine": "specialist-routing + advanced reasoning + verification + consensus"}
+    return {"name": "RoboLab-X", "version": "3.1.0", "specialists": 48, "pro_features": 10, "android": True, "auth": ["google", "guest"], "billing": "google-play-verified", "engine": "specialist-routing + advanced reasoning + verification + consensus"}
 
 @app.post("/api/v1/auth/guest")
 def auth_guest():
@@ -93,6 +98,24 @@ def auth_google(payload: GoogleAuthRequest):
 def auth_me(request: Request):
     session = _session_from_request(request, required=True)
     return {"user": session}
+
+@app.post("/api/v1/billing/google/verify")
+def billing_google_verify(request: Request, payload: BillingVerifyRequest):
+    session = _session_from_request(request, required=True)
+    try:
+        verification = verify_subscription(payload.purchase_token, payload.product_id)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    upgraded = {
+        "id": session["sub"],
+        "mode": session.get("mode", "google"),
+        "name": session.get("name", "Engineer"),
+        "email": session.get("email"),
+        "pro": True,
+    }
+    return {"verified": True, "verification": verification, "token": issue_session(upgraded), "user": upgraded}
 
 @app.get("/api/v1/agents")
 def agents():
