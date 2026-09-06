@@ -1,0 +1,16 @@
+name: robolab_x
+version: 1.0.0+1
+description: RoboLab X — professional mobile robotics engineering workspace.
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.6.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.5.0
+  shared_preferences: ^2.5.3
+
+flutter:
+  uses-material-design: true
