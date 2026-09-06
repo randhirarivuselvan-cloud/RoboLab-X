@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from .config import get_settings
 from .agents import specialist_directory, SPECIALISTS, specialist_prompt
 from .engineering import build_project, validate_project, synthesize_consensus
+from .evaluation import evaluate_project
 from .provider import generate_with_provider, ProviderError
 
 settings = get_settings()
@@ -65,8 +66,10 @@ async def generate(request: GenerateRequest):
             ai_result = {"mode": "fallback", "error": str(exc), "note": "Deterministic engineering pipeline retained."}
     findings = validate_project(project)
     consensus = synthesize_consensus(project, findings)
+    quality = evaluate_project(project)
     project["ai_synthesis"] = ai_result
     project["verification"] = findings
+    project["quality_evaluation"] = quality
     project["consensus"] = consensus
     return {"request_id": request.state.request_id, "project": project}
 
