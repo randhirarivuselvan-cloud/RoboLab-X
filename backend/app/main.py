@@ -5,7 +5,8 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from .config import get_settings
-from .agents import specialist_directory, SPECIALISTS, specialist_prompt
+from .agents import specialist_directory, SPECIALISTS
+from .agent_intelligence import enhanced_prompt
 from .engineering import build_project, validate_project, synthesize_consensus
 from .evaluation import evaluate_project
 from .provider import generate_with_provider, ProviderError
@@ -68,7 +69,11 @@ async def generate(request: GenerateRequest):
     if request.use_ai and settings.ai_provider != "local":
         lead = next(a for a in SPECIALISTS if a.domain == "lead")
         try:
-            ai_result = await generate_with_provider(specialist_prompt(lead, request.idea), "Create a rigorous final engineering synthesis. Return JSON with decision, architecture, risks, tests, unresolved_questions and recommended_next_steps.")
+            ai_result = await generate_with_provider(
+                enhanced_prompt(lead, request.idea, "Use the project plan, specialist work orders and verification results as shared context."),
+                "Create a rigorous final engineering synthesis. Return JSON with decision, architecture, artifacts, risks, verification_checks, conflicts, unresolved_questions and recommended_next_steps.",
+                role=lead.domain,
+            )
         except ProviderError as exc:
             ai_result = {"mode": "fallback", "error": str(exc), "note": "Deterministic engineering pipeline retained."}
     findings = validate_project(project)
