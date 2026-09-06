@@ -16,6 +16,14 @@ class UserSession {
     this.email,
     this.isPro = false,
   });
+
+  UserSession copyWith({bool? isPro}) => UserSession(
+    mode: mode,
+    token: token,
+    displayName: displayName,
+    email: email,
+    isPro: isPro ?? this.isPro,
+  );
 }
 
 class SessionService {
@@ -24,6 +32,7 @@ class SessionService {
   static const _nameKey = 'session_name';
   static const _emailKey = 'session_email';
   static const _proKey = 'session_pro';
+  static bool _googleInitialized = false;
 
   static Future<UserSession?> restore() async {
     final prefs = await SharedPreferences.getInstance();
@@ -52,15 +61,18 @@ class SessionService {
 
   static Future<UserSession> signInWithGoogle() async {
     final signIn = GoogleSignIn.instance;
-    await signIn.initialize(
-      serverClientId: const String.fromEnvironment('GOOGLE_SERVER_CLIENT_ID'),
-    );
-    final account = await signIn.authenticate();
-    final authorization = await account.authorizationClient.authorizationForScopes(const ['email', 'profile']);
-    final authentication = account.authentication;
-    final idToken = authentication.idToken;
+    if (!_googleInitialized) {
+      const serverClientId = String.fromEnvironment('GOOGLE_SERVER_CLIENT_ID');
+      await signIn.initialize(serverClientId: serverClientId.isEmpty ? null : serverClientId);
+      _googleInitialized = true;
+    }
+    if (!signIn.supportsAuthenticate()) {
+      throw StateError('Interactive Google Sign-In is unavailable on this platform.');
+    }
+    final account = await signIn.authenticate(scopeHint: const ['email', 'profile']);
+    final idToken = account.authentication.idToken;
     if (idToken == null || idToken.isEmpty) {
-      throw StateError('Google did not return an ID token. Check GOOGLE_SERVER_CLIENT_ID.');
+      throw StateError('Google did not return an ID token. Check the Android OAuth configuration.');
     }
     final data = await ApiService.postJson('/api/v1/auth/google', {'id_token': idToken});
     final session = UserSession(
@@ -70,15 +82,14 @@ class SessionService {
       email: data['user']?['email']?.toString() ?? account.email,
       isPro: data['user']?['pro'] == true,
     );
-    // Keep authorization referenced so Android can request scopes if needed later.
-    authorization;
     await _persist(session);
     return session;
   }
 
-  static Future<void> setPro(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_proKey, value);
+  static Future<UserSession> setPro(UserSession current, bool value) async {
+    final updated = current.copyWith(isPro: value);
+    await _persist(updated);
+    return updated;
   }
 
   static Future<void> signOut() async {
@@ -88,9 +99,11 @@ class SessionService {
     await prefs.remove(_nameKey);
     await prefs.remove(_emailKey);
     await prefs.remove(_proKey);
-    try {
-      await GoogleSignIn.instance.signOut();
-    } catch (_) {}
+    if (_googleInitialized) {
+      try {
+        await GoogleSignIn.instance.signOut();
+      } catch (_) {}
+    }
   }
 
   static Future<void> _persist(UserSession session) async {
@@ -98,7 +111,11 @@ class SessionService {
     await prefs.setString(_tokenKey, session.token);
     await prefs.setString(_modeKey, session.mode);
     await prefs.setString(_nameKey, session.displayName);
-    if (session.email != null) await prefs.setString(_emailKey, session.email!);
+    if (session.email != null) {
+      await prefs.setString(_emailKey, session.email!);
+    } else {
+      await prefs.remove(_emailKey);
+    }
     await prefs.setBool(_proKey, session.isPro);
   }
 }
